@@ -1,5 +1,5 @@
 # Micro-PRIAD v1.0 (May 2026)
-Micro-PRIAD is a multifidelity stochastic blackbox suite of nine problems that implements the intermediate return. It simulates an electrical grid to evaluate the cost of a given maintenance strategy. The goal is to minimize the cost by finding an optimal feasible strategy.
+Micro-PRIAD is a stochastic blackbox collection of ten problems that implements the intermediate return and allows for sub-sampling of th MC draws within an evaluation. It simulates an electrical grid to evaluate the cost of a given maintenance strategy. The goal is to minimize the cost by finding an optimal feasible strategy.
 ## Download
 To download the **Micro-PRIAD** blackbox you must have Julia 1.12 version installed on your computer. Skip the section **downloading Julia** if you already have Julia 1.12 or a newer version on your computer.
 > Note : commands below work on Linux and macOS.
@@ -42,14 +42,6 @@ To run a simulation, there are four options.
 
 #### Option 1:
 
-Type the following command in the terminal:
-```
-julia $MICRO_PRIAD_HOME/src/run.jl pathToARGS/ARGS.txt pathToX/x.txt
-```
-Where the `ARGS.txt` contains the necessary information to call the blackbox, and `x.txt` contains the point to evaluate (see below for formatting of those files).
-
-#### Option 2:
-
 Type in the terminal a command that respects the following format:
 ```
 julia $MICRO_PRIAD_HOME/src/run.jl -@param1 value1 -@param2 value2 ... -@paramN valueN path2X/x.txt 
@@ -61,25 +53,30 @@ A simple example with only two parameters is given here:
 julia $MICRO_PRIAD_HOME/src/run.jl -instance 1 -fidelity 0.001 $MICRO_PRIAD_HOME/Tests/instance=3/length_input=28/x0_feasible/1.txt 
 ```
 
-#### Option 3:
+#### Option 2:
 
 Type the following command in the terminal:
 ```
-julia $MICRO_PRIAD_HOME/src/run.jl pathToX/x.txt
+julia $MICRO_PRIAD_HOME/src/run.jl pathToARGS/ARGS.txt pathToX/x.txt
 ```
-Where the necessary information to call the blackbox is in a green commented box in the `run.jl` file (you can modify the .jl file to modify the arguments that would have been in `ARGS.txt` in option 1), and the `x.txt` contains the point to evaluate.
+Where the `ARGS.txt` contains the necessary information to call the blackbox, and `x.txt` contains the point to evaluate (see below for formatting of those files).
 
-#### Option 4:
+#### Option 3:
 
 Simply call the MicroPRIAD Julia function directly in a Julia script if your solver is defined in Julia (don't forget to include "MicroPRIAD.jl" in your script).
 
 
-### Files formating
+### Formating (to call Micro-PRIAD)
 
-#### ARGS.txt
-The `ARGS.txt` file contains the same information that you would need to define in Julia if you chose the execution option 2, 3, or 4. It contains arguments described in [ARGS_README](./Documentation/BB_Parameter/ARGS_README.md) and formatted like in the `ex_ARGS.txt` files located in each folder in `$MICRO_PRIAD_HOME/Tests`.
+#### ARGS
 
-All the arguments have a default value, so you can choose to initialize only the arguments that you want. The other argument(s) will take their default value.
+To call Micro-PRIAD, the parameter to call it can be given in the command line like explained in option 1. Those arguments are describded in [ARGS_README](./Documentation/ARGS_README.md).
+
+The `ARGS.txt` file contains the information that you need to call Micro-PRIAD when using option 2. It contains arguments described in [ARGS_README](./Documentation/ARGS_README.md) and formatted like in the `ex_ARGS.txt` files located in each folder in `$MICRO_PRIAD_HOME/Tests`.
+
+To call Micro-PRIAD in Julia direcly, the sam parameter can be set.
+
+All the arguments have a default value, so you can choose to initialize only the arguments that you want, in the order you want. The other argument(s) will take their default value.
 #### x.txt
 The `x.txt` file contains the input vector that can take different sizes:
 ```
@@ -92,18 +89,13 @@ The `x.txt` file must contain only the numerical value of each variable separate
 
 For all integer inputs, the bounds are 1 and 9, and for all real inputs, the bounds are 0.1 and 10.0.
 
-## Micro-PRIAD's Behavior
-### Running time 
-The Running time for each input length of each instance at different fidelity is logged in the [BEHAV_README](./Documentation/Behaviour/BEHAV_README.md). 
-### Best objective function value found
-A list of the best-known objective function values is also logged in the [BEHAV_README](./Documentation/Behaviour/BEHAV_README.md). 
-### General Behavior
-A general behavior description is done in the [BEHAV_README](./Documentation/Behaviour/BEHAV_README.md). 
-## Other tools
+The path and name of this file is the last argument given in the command line when calling Micro-PRIAD with option 1 or 2.
 
-In the `$MICRO_PRIAD_HOME/Benchmarking_Tools` directory, you will find different Julia files that you can execute to run on each instance for each input length  `NOMAD`, an `LHS` (Latin Hypercube Sampling), or a `RS` (Random Search). The commands necessary to run those methods are described in the [TOOLS_README](./Documentation/Other_Tools/TOOLS_README.md).
+## Micro-PRIAD's Behavior
+The Running time for each input length of each instance at different fidelity is logged in the [BEHAV_README](./Documentation/BEHAV_README.md). A list of the best-known objective function values is also logged in the [BEHAV_README](./Documentation/BEHAV_README.md). 
+
+Some benchmarking data is available in the  [BENCHMARKING_README](./BenchmarkingData/BENCHMARKING_README.md)
 
 ----------------------------
 
-The tree structure of the repo is shown in the [TREE_STRUCT_README](./Documentation/TREE_STRUCT_README.md).
-
+The tree structure of the repo is shown in the [TREE_STRUCT](./Documentation/TREE_STRUCT.md).

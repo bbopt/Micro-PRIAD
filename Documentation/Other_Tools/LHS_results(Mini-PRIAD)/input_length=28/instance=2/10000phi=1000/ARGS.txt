@@ -1,4 +1,0 @@
-fidelity	0.1
-seed	0
-instance	2
-loggingTime /home/gentfred/Documents/Mini-PRIAD/Benchmarking_Tools/LHS_results/input_length=28/instance=2/10000phi=1000/loggingTime.txt

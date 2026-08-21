@@ -2,9 +2,9 @@ include("Struct.jl")
 include("Param.jl")
 include("Initialisation.jl")
 
-include("ContinueEvalFunctions.jl")
+include("InterrupterFunctions.jl")
 include("Single_MC_info_return_Functions.jl")
-include("SubSamplingFunctions.jl")
+include("SubSamplerFunctions.jl")
 
 include("UnavailabilitySimulator.jl")
 include("ElectricitySimulator.jl")
@@ -146,19 +146,21 @@ The "MicroPRIAD" function is the heart of the black box, it links the processing
 
 ######################################################## Input ###########################################################
 @Param ϕ: is the blackbox fidelity and is contained from 0 to 1.
-@Param seed: is the black box random seed used for the Monte-Carlo samples
-@Param continueEval: is the function that controls the intermediate return of the function and the constraints, it is initialized to "basicContinueEval" if not specified
-@Param AnyParamForContinueEvalFunction: is a string that can be used to give any parameter to the "continueEval" function, it is initialized to an empty string if not specified
-@Param PGinstance: argument indicates which instance is used to initialize the network; it can be set either to an instance [1, 2, 3] or to anything else to launch the BB with the customized parameters
+@Param seed: is the black box random seed used for the Monte Carlo samples
+@Param Interrupter: is the function that controls the intermediate return of the function and the constraints, it is initialized to "basicInterrupter" if not specified
+@Param AnyParamForContinueEvalFunction: is a string that can be used to give any parameter to the "Interrupter" function, it is initialized to an empty string if not specified
+@Param PG: argument indicates which instance is used to initialize the network; it can be set either to an instance [s, r, u, t]
 @Param loggingTime: argument indicates if the user wants the program to print a "timeLog.txt" file with the running time of each itterations.
 @Param N: is the total number of Monte Carlo trial done to evluate Micro-PRIAD when ϕ = 1.0, it is set to 10000 by default
-@Param eta: is the number of Monte-Carlo trials done at each intermediate return of the blackbox, it is set to 1000 by default
-@Param halfTrialsReturn: is a boolean that indicates if there is an additional intermediate return when half of the MC constraints are computed. 
-    It is set to true by default, because between the first half and the second half of the constraints evaluation, there is a lot of time spent. It is even more true when eta is high.
-@Param single_MC_info_return: argument indicates if the user wants the program to print every single Monte-Carlo trial in a .txt file
+@Param eta: is the number of time each intermediate return and subsampler is called, (umber of itteration of the loop) it is set to 10 by default
+@Param s: is the number of Monte Carlo trials done at each intermediate return of the blackbox, it is set to 1000 by default
+@Param availInterrupter: is a boolean that indicates if there is an additional intermediate return when half of the MC constraints are computed. 
+    It is set to true by default, because between the first half and the second half of the constraints evaluation, there is a lot of time spent. It is even more true when s is high.
+@Param single_MC_info_return: argument indicates if the user wants the program to print every single Monte Carlo trial in a .txt file
 @Param AnyParamForSingle_MC_Info_ReturnFunction: is a string that can be used to give any parameter to the "single_MC_info_return" function, it is initialized to an empty string if not specified
-@Param subSampling: is the function used to do the subSampling if needed, it is initialized to "basicSubSampling" if not specified
-@Param AnyParamForSubSamplingFunction: is a string that can be used to give any parameter to the "subSampling" function, it is initialized to an empty string if not specified
+@Param SubSampler: is the function used to do the SubSampler if needed, it is initialized to "basicSubSampler" if not specified
+@Param AnyParamForSubSampler: is a string that can be used to give any parameter to the "SubSampler" function, it is initialized to an empty string if not specified
+@Param first_s_to_one : make the first MC loop do a sample of size 1.
 @Param x: is the maintenance's periodicity, the coordinate that the solver can interact with, it is defined as follows:
 
 for 28 inputs : for 15 inputs : for 13 inputs :
@@ -205,7 +207,7 @@ for 28 inputs : for 15 inputs : for 13 inputs :
     FFC[11] : C9         : is a constraint that controls the amount of undelivered energy to hospitals over 40 years
 ###########################################################################################################################
 =#
-function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Float64 = 1.0, seed::Int64 = 0, continueEval::Function = basicContinueEval, PGinstance::Int64 = 1, loggingTime::String = "false", loggingN::String = "false", loggingPhi::String = "false", eta::Int64 = 1000, halfTrialsReturn::Bool = true, N::Int64 = 10000, AnyParamForContinueEvalFunction = "", single_MC_info_return::Function = basic_single_MC_info_return, AnyParamForSingle_MC_Info_ReturnFunction = "", subSampling::Function = basicSubSampling, AnyParamForSubSamplingFunction = "")                        
+function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Float64 = 1.0, seed::Int64 = 0, Interrupter::Function = basicInterrupter, PG::Union{Int64, Char, String} = "s", loggingTime::String = "false", loggingN::String = "false", loggingPhi::String = "false", s::Union{Int64, Float64} = -1, eta::Union{Int64, Float64} = -1, availInterrupter::Bool = true, N::Union{Int64, Float64} = -1, AnyParamForInterrupter = "", single_MC_info_return::Function = basic_single_MC_info_return, AnyParamForSingle_MC_Info_ReturnFunction = "", SubSampler::Function = basicSubSampler, AnyParamForSubSampler = "", first_s_to_one::Bool = false)                        
     timer = 0.0
     clk = time()
 
@@ -219,7 +221,6 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
     x = Vector{Float64}(undef, 28)
 
     if length(input) == 28                
-
         checkInput(input)
         x = input 
         C1_2_3_4_6_7_8_9multiplier = 1.0
@@ -241,27 +242,76 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
         @warn "The fidelity ϕ was truncated to the 4th digits after the comma, ϕ = $ϕ"
     end
 
-    if (subSampling != basicSubSampling)
+    if (SubSampler != basicSubSampler)
         if single_MC_info_return == print_single_MC_info_return
-            @warn "The single_MC_info_return function cannot be used with a subSampling function, the single_MC_info_return function will be set to print_single_MC_info_return_for_subSampling, that is compatible with the subSampling function. its output is:\nf C8 C9\n"
+            @warn "The single_MC_info_return function cannot be used with a SubSampler function, the single_MC_info_return function will be set to print_single_MC_info_return_for_subSampling, that is compatible with the SubSampler function. its output is:\nf C8 C9\n"
             single_MC_info_return = print_single_MC_info_return_for_subSampling
-        elseif eta == 1
-            @warn "The eta parameter cannot be set to 1 because no subSampling could be done. The eta parameter will be set to 1000 by default.\n"
-            eta = 1000
+        elseif s == 1
+            @warn "The s parameter cannot be set to 1 because no SubSampler could be done. The s parameter will be set to 1000 by default.\n"
+            s = 1000
         end
     elseif single_MC_info_return != basic_single_MC_info_return
         if single_MC_info_return == print_single_MC_info_return_for_subSampling
-            @warn "The print_single_MC_info_return_for_subSampling function is curently without a subSampling function, it only returns (f C8 and C9)"
-        elseif eta != 1
-            @warn "The eta parameter is given $eta, but the constraint C6 and C7 cannot be returned correctly with this value. Use print_single_MC_info_return_for_subSampling or set eta to 1. It has been set to 1 to avoid problems.\n"
-            eta = 1
+            @warn "The print_single_MC_info_return_for_subSampling function is curently without a SubSampler function, it only returns (f C8 and C9)"
+        elseif s != 1
+            @warn "The s parameter is given $s, but the constraint C6 and C7 cannot be returned correctly with this value. Use print_single_MC_info_return_for_subSampling or set s to 1. It has been set to 1 to avoid problems.\n"
+            s = 1
         end
     end
+
+    if s == 1 && first_s_to_one == true
+        @warn "s=1 and first_s_to_one == true are redundant, first_s_to_one is set to false"
+        first_s_to_one = false
+    end
+
+    println("N = $N, s = $s, eta = $eta")
+
+
+    if s == -1 && N == -1 # eta défini
+        N = 10000
+        s = ceil(10000/eta)
+    elseif eta == -1 && s == -1 # N defini
+        if N > 1000
+            s = 1000
+        else
+            s = N
+        end
+    elseif eta == -1 && N == -1 # s defini
+        if s < 10000
+            N = 10000
+        else
+            N = s
+        end
+    elseif s == -1 # s non défini
+        s = ceil(N/eta)
+    elseif N == -1 # N non défini
+        N = eta * s
+    elseif eta == -1 # eta non défini
+        # ok        
+    else
+        if N != eta * s
+            @warn "eta was ignored because the equality N = eta * s is not respected"
+        end
+    end
+    
+    if N < s
+        @warn "N < s, the default value are used because we must have N >= s"
+        N = 10000
+        s = 1000
+    elseif N < eta
+        @warn "N < eta, the default value are used because we must have N >= eta"
+        N = 10000
+        s = 1000
+    end
+
+    N = Int64(N)
+    s = Int64(s)
+    
 ###########################################################################################################################
 
-    nbVec = nbParam(PGinstance)
+    nbVec = nbParam(PG)
     T = periodicityCalculator(x)
-    requiredTimeForMaintenances = MaintenancesParam(PGinstance)
+    requiredTimeForMaintenances = MaintenancesParam(PG)
 
 ####### C1 and C2 ########
     FFC[3:4] = [-500, -500]
@@ -323,7 +373,7 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
         end
     end
 ####################                
-    FFCT = UnavailSimulator(FFC, stations, ϕ, x, seed, continueEval, timer, clk, C1_2_3_4_6_7_8_9multiplier, PGinstance, nbVec, eta, halfTrialsReturn, N, AnyParamForContinueEvalFunction, single_MC_info_return, AnyParamForSingle_MC_Info_ReturnFunction, subSampling, AnyParamForSubSamplingFunction)   
+    FFCT = UnavailSimulator(FFC, stations, ϕ, x, seed, Interrupter, timer, clk, C1_2_3_4_6_7_8_9multiplier, PG, nbVec, s, availInterrupter, N, AnyParamForInterrupter, single_MC_info_return, AnyParamForSingle_MC_Info_ReturnFunction, SubSampler, AnyParamForSubSampler, first_s_to_one)   
 
     FFC = FFCT[1:11]
     timer = FFCT[12]

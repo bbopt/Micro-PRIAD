@@ -1,1 +1,0 @@
-This is a warning! This folder present results from an older version of the blackbox where parameter were not the same, you might not recognize parameter! Contact us if needed.

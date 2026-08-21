@@ -1,4 +1,0 @@
-fidelity	1.0
-seed	0
-instance	1
-loggingTime /home/gentfred/Documents/Mini-PRIAD/Benchmarking_Tools/NOMAD_results/i=1_l=15_x0infeas/loggingTime.txt

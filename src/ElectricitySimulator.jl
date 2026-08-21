@@ -85,16 +85,16 @@ function nhnisbcCalculator(stations::Vector{Station}, ui, nbStation)
 end
 
 #=
-This function calculates the interpretation of the unavailability intervals (ui) calculating the number of hours not in service by categories for all ui in allui and then apply subSampling if needed.
+This function calculates the interpretation of the unavailability intervals (ui) calculating the number of hours not in service by categories for all ui in allui and then apply SubSampler if needed.
 =#
-function interpretationOfUi(stations::Vector{Station}, allui, nbStation, subSampling::Function, AnyParamForSubSamplingFunction, timer, clk)
+function interpretationOfUi(stations::Vector{Station}, allui, nbStation, SubSampler::Function, AnyParamForSubSampler, timer, clk)
     hoursVec = Vector{Vector{Float64}}() # hoursVec := nbHoureNotInServiceByCategories
     for ui in allui
         nbHoureNotInServiceByCategories = nhnisbcCalculator(stations, ui, nbStation) 
         push!(hoursVec, nbHoureNotInServiceByCategories)
     end
     timer += time() - clk
-    index = subSampling(hoursVec, AnyParamForSubSamplingFunction)
+    index = SubSampler(hoursVec, AnyParamForSubSampler)
     NEWnhnisbc = hoursVec[index]
     clk = time()
     return NEWnhnisbc
