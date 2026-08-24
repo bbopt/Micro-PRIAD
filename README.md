@@ -1,4 +1,4 @@
-# Micro-PRIAD v1.0 (May 2026)
+# Micro-PRIAD v1.0 (August 2026)
 Micro-PRIAD is a stochastic blackbox collection of ten problems that implements the intermediate return and allows for sub-sampling of th MC draws within an evaluation. It simulates an electrical grid to evaluate the cost of a given maintenance strategy. The goal is to minimize the cost by finding an optimal feasible strategy.
 ## Download
 To download the **Micro-PRIAD** blackbox you must have Julia 1.12 version installed on your computer. Skip the section **downloading Julia** if you already have Julia 1.12 or a newer version on your computer.
