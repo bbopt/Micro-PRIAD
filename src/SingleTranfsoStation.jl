@@ -202,8 +202,4 @@ function singleTransfoStation(x::Vector{Float64}, N::Int, seed::Int, SubSampler:
     f = picopriad_sims(sub_duree_combos, [moy_cout_maintenance_reel for i in 1:t], [moy_cout_reparation for i in 1:t], H)
     nb_tirages = size(unique(Yss, dims=1), 1)
     return f
-
-    #y = picopriad_plages(x; nb_tirages=N, seed=seed)
-    #f = picopriad_sims(y...)
-    #return f
 end

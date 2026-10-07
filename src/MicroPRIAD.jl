@@ -276,9 +276,7 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
         @warn "s=1 and first_s_to_one == true are redundant, first_s_to_one is set to false"
         first_s_to_one = false
     end
-
-    println("N = $N, s = $s, eta = $eta")
-
+    
     if s == -1 && N == -1 # eta défini
         N = 10000
         s = ceil(10000/eta)
