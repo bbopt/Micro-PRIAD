@@ -10,6 +10,8 @@ include("UnavailabilitySimulator.jl")
 include("ElectricitySimulator.jl")
 include("RiskModule.jl")
 
+include("SingleTranfsoStation.jl")
+
 #=
 The "checkInput" function checks if the input given by the solver respects the input format; if not, it prints an error message
 =#
@@ -31,7 +33,7 @@ function checkInput(input)
     elseif length(input) == 15
         for i in 1:15
             if input[i] <= 0 
-                @error "The $(i)th input is is suppose to be positive but is non positive"
+                @error "The $(i)th input is is supposed to be positive but is non positive"
             end
         end
     elseif length(input) == 13
@@ -48,6 +50,13 @@ function checkInput(input)
                 @error "The $(i)th input is supposed to be positive but is non-positive"
             end
         end
+    # PG=t single transformation station début
+    elseif length(input) == 4
+        for i in 1:4
+            if input[i] <= 0 
+                @error "The $(i)th input is supposed to be positive but is non positive"
+            end
+        end # PG=t single transformation station fin
     end
 end
 
@@ -232,8 +241,12 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
         checkInput(input)
         x = [Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, Inf64, input[1], input[2], input[3], input[4], input[5], input[6], input[7], input[8], input[9], input[10], input[11], input[12], input[13]]
         C1_2_3_4_6_7_8_9multiplier = 28/13
+    # PG=t single transformation station début
+    elseif length(input) == 4
+        checkInput(input)
+        x = input # PG=t single transformation station fin
     else
-        @error "The input vector must be of length 28, 15 or 13"
+        @error "The input vector must be of length 28, 15, 13 or 4, but it is of length $(length(input))"
         return nothing
     end
 
@@ -263,10 +276,7 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
         @warn "s=1 and first_s_to_one == true are redundant, first_s_to_one is set to false"
         first_s_to_one = false
     end
-
-    println("N = $N, s = $s, eta = $eta")
-
-
+    
     if s == -1 && N == -1 # eta défini
         N = 10000
         s = ceil(10000/eta)
@@ -308,6 +318,17 @@ function MicroPRIAD(input::Union{Vector{Float64}, Vector{Int64}, String}; ϕ::Fl
     s = Int64(s)
     
 ###########################################################################################################################
+
+    # PG=t single transformation station début
+    if PG == "t"
+        if length(input) != 4
+            @error "The input vector must be of length 4 for the PG=t single transformation station, but it is of length $(length(input))"
+            return nothing
+        else
+            f = singleTransfoStation(x, N, seed, SubSampler, AnyParamForSubSampler)
+            return "1 $f"
+        end
+    end # PG=t single transformation station fin
 
     nbVec = nbParam(PG)
     T = periodicityCalculator(x)
